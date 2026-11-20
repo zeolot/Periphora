@@ -1,6 +1,17 @@
-// Standalone tool: render a clean line-art battery+bolt icon into a multi-size ICO.
-// Style: transparent background, dark ink stroke with a white halo so the icon stays
-// legible on both light and dark taskbars. No vendor branding, no color gradient.
+// Standalone tool: render the Periphora mark into an ICO or a PNG.
+//
+// The mark is a green rounded square holding a battery gauge: a translucent
+// track with a solid fill at ~64%, plus the cell's terminal nub. That is the
+// same visual language as the panel itself (a rounded progress bar under the
+// percentage), so the icon and the product no longer disagree.
+//
+// Everything is drawn from one set of coordinates in a 24x24 design box and
+// scaled with GDI+, so the 16px tray frame and the 512px README image come from
+// the same geometry.
+//
+// Usage:
+//   MakeIcon.exe out.ico             multi-size ICO (16..256)
+//   MakeIcon.exe out.png 512         single PNG at the given pixel size
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -10,11 +21,15 @@ using System.IO;
 
 public class MakeIcon
 {
-    // All geometry in a 24x24 design box.
-    static GraphicsPath Body()
+    // Design box is 24x24. Palette: a green that survives both light and dark
+    // desktop backgrounds, and pure white for the gauge.
+    static readonly Color BackTop = Color.FromArgb(255, 99, 220, 136);
+    static readonly Color BackBottom = Color.FromArgb(255, 40, 172, 96);
+    static readonly Color Ink = Color.FromArgb(255, 255, 255, 255);
+
+    static GraphicsPath Rounded(float x, float y, float w, float h, float r)
     {
-        // rounded rectangle shell: x=2..20, y=6..18, corner radius 2.4
-        float x = 2f, y = 6f, w = 18f, h = 12f, r = 2.4f, d = r * 2f;
+        float d = r * 2f;
         GraphicsPath p = new GraphicsPath();
         p.AddArc(x, y, d, d, 180, 90);
         p.AddArc(x + w - d, y, d, d, 270, 90);
@@ -24,19 +39,58 @@ public class MakeIcon
         return p;
     }
 
-    static void Bolt(Graphics g, Pen pen)
+    static void Paint(Graphics g, float size)
     {
-        // lighting bolt drawn inside the shell, centred with even padding
-        PointF[] pts = {
-            new PointF(12.4f, 8.9f),
-            new PointF(9.6f, 12.7f),
-            new PointF(11.7f, 12.7f),
-            new PointF(10.6f, 16.4f),
-            new PointF(14.2f, 11.9f),
-            new PointF(12.3f, 11.9f)
-        };
-        g.DrawLines(pen, pts);
-        g.DrawLine(pen, pts[pts.Length - 1], pts[0]);
+        // The rounded square bleeds to the edges of the canvas, like an app icon.
+        float radius = size * 0.224f;
+        using (GraphicsPath plate = Rounded(0, 0, size, size, radius))
+        using (LinearGradientBrush bg = new LinearGradientBrush(
+                   new RectangleF(0, 0, size, size), BackTop, BackBottom, 90f))
+        {
+            g.FillPath(bg, plate);
+        }
+
+        // Gauge geometry, in design units of the 24 box: a battery shell with the
+        // charge drawn inside it, plus the terminal nub. An outline plus a short
+        // filled block stays readable at 16px, where a translucent track would
+        // turn to mush.
+        float k = size / 24f;
+
+        // Below 24px there is not enough room for a 1.3px outline plus a block:
+        // the two blur into one grey lump. At that size the shape is reduced to a
+        // bold shell and its terminal, drawn slightly larger, which still reads
+        // as a battery in a taskbar.
+        bool tiny = size <= 24;
+        float stroke = (tiny ? 2.5f : 1.9f) * k;
+        float sx = (tiny ? 4.2f : 4.0f) * k;
+        float sw = (tiny ? 12.6f : 13.4f) * k;
+        float sh = (tiny ? 8.6f : 8.8f) * k;
+        float sr = (tiny ? 2.6f : 2.5f) * k;
+        float sy = 12f * k - sh / 2f;   // vertically centred on the 12 line
+
+        using (GraphicsPath shell = Rounded(sx, sy, sw, sh, sr))
+        using (Pen p = new Pen(Ink, stroke))
+        {
+            p.LineJoin = LineJoin.Round;
+            g.DrawPath(p, shell);
+        }
+
+        if (!tiny)
+        {
+            // charge inside the shell, hugging the left terminal so it reads as a
+            // level rather than a block floating in the middle
+            using (GraphicsPath level = Rounded(5.7f * k, 9.7f * k, 5.5f * k, 4.6f * k, 1.1f * k))
+            using (SolidBrush b = new SolidBrush(Ink))
+                g.FillPath(b, level);
+        }
+
+        // terminal nub on the right edge
+        float nubW = (tiny ? 2.0f : 1.9f) * k;
+        float nubH = (tiny ? 3.6f : 3.2f) * k;
+        float nubX = sx + sw + 0.5f * k;
+        using (GraphicsPath nub = Rounded(nubX, 12f * k - nubH / 2f, nubW, nubH, nubW / 2f))
+        using (SolidBrush b = new SolidBrush(Ink))
+            g.FillPath(b, nub);
     }
 
     static Bitmap Render(int size)
@@ -44,45 +98,17 @@ public class MakeIcon
         Bitmap bmp = new Bitmap(size, size, PixelFormat.Format32bppPArgb);
         using (Graphics g = Graphics.FromImage(bmp))
         {
-            g.SmoothingMode = SmoothingMode.HighQuality;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            g.CompositingQuality = CompositingQuality.HighQuality;
             g.Clear(Color.Transparent);
-
-            float pad = size * 0.09f;
-            float box = size - pad * 2f;
-            float k = box / 24f;
-            g.TranslateTransform(pad, pad);
-            g.ScaleTransform(k, k);
-
-            // ink width in design units; slightly thicker on tiny sizes for clarity
-            float ink = size <= 24 ? 2.1f : 1.9f;
-            float halo = ink + 2.2f;
-
-            using (Pen white = new Pen(Color.FromArgb(240, 255, 255, 255), halo))
-            using (Pen dark = new Pen(Color.FromArgb(32, 38, 48), ink))
-            {
-                white.LineJoin = LineJoin.Round; white.StartCap = LineCap.Round; white.EndCap = LineCap.Round;
-                dark.LineJoin = LineJoin.Round; dark.StartCap = LineCap.Round; dark.EndCap = LineCap.Round;
-
-                using (GraphicsPath shell = Body())
-                {
-                    // white halo pass first, then dark ink on top
-                    g.DrawLine(white, 20.6f, 10f, 20.6f, 14f);
-                    g.DrawPath(white, shell);
-                    Bolt(g, white);
-
-                    g.DrawLine(dark, 20.6f, 10f, 20.6f, 14f);
-                    g.DrawPath(dark, shell);
-                    Bolt(g, dark);
-                }
-            }
+            Paint(g, size);
         }
         return bmp;
     }
 
-    public static void Main(string[] args)
+    static void WriteIco(string outPath)
     {
-        string outPath = args.Length > 0 ? args[0] : "app.ico";
         int[] sizes = { 16, 24, 32, 48, 64, 128, 256 };
         List<byte[]> images = new List<byte[]>();
 
@@ -114,6 +140,27 @@ public class MakeIcon
                 offset += images[i].Length;
             }
             foreach (byte[] img in images) w.Write(img);
+        }
+    }
+
+    public static void Main(string[] args)
+    {
+        if (args.Length == 0)
+        {
+            Console.Error.WriteLine("usage: MakeIcon <out.ico> | MakeIcon <out.png> <size>");
+            Environment.ExitCode = 1;
+            return;
+        }
+
+        string outPath = args[0];
+        if (outPath.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+        {
+            int size = args.Length > 1 ? int.Parse(args[1]) : 512;
+            using (Bitmap b = Render(size)) b.Save(outPath, ImageFormat.Png);
+        }
+        else
+        {
+            WriteIco(outPath);
         }
         Console.WriteLine("wrote " + outPath);
     }
