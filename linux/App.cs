@@ -24,11 +24,19 @@ namespace Periphora.Linux
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
                 desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-                bool demo = false;
+                // --demo renders the panel from synthetic readings. An optional
+                // suffix picks the scenario: --demo=2 / --demo=3 / --demo=4 /
+                // --demo=empty. Used to capture the screenshots in docs/.
+                string demo = null;
                 foreach (string argument in Environment.GetCommandLineArgs())
-                    if (string.Equals(argument, "--demo", StringComparison.OrdinalIgnoreCase)) demo = true;
+                {
+                    if (!argument.StartsWith("--demo", StringComparison.OrdinalIgnoreCase)) continue;
+                    int equals = argument.IndexOf('=');
+                    demo = equals < 0 ? string.Empty : argument.Substring(equals + 1);
+                }
+                bool interactive = demo == null;
 
-                _controller = demo ? null : new PeriphoraController();
+                _controller = interactive ? new PeriphoraController() : null;
                 _window = new MainWindow(_controller, demo);
                 try
                 {
@@ -48,11 +56,20 @@ namespace Periphora.Linux
                     {
                         try
                         {
+                            // PERIPHORA_SHOT_SCALE=2 renders at 2x so the images in
+                            // docs/ stay crisp on high-DPI displays.
+                            double scale = 1;
+                            string scaleText = Environment.GetEnvironmentVariable("PERIPHORA_SHOT_SCALE");
+                            if (!string.IsNullOrEmpty(scaleText))
+                            {
+                                double parsed;
+                                if (double.TryParse(scaleText, out parsed) && parsed > 0) scale = parsed;
+                            }
                             PixelSize size = new PixelSize(
-                                Math.Max(1, (int)Math.Ceiling(_window.Bounds.Width)),
-                                Math.Max(1, (int)Math.Ceiling(_window.Bounds.Height)));
+                                Math.Max(1, (int)Math.Ceiling(_window.Bounds.Width * scale)),
+                                Math.Max(1, (int)Math.Ceiling(_window.Bounds.Height * scale)));
                             using (Avalonia.Media.Imaging.RenderTargetBitmap bitmap =
-                                new Avalonia.Media.Imaging.RenderTargetBitmap(size, new Vector(96, 96)))
+                                new Avalonia.Media.Imaging.RenderTargetBitmap(size, new Vector(96 * scale, 96 * scale)))
                             {
                                 bitmap.Render(_window);
                                 bitmap.Save(shot);
@@ -65,7 +82,7 @@ namespace Periphora.Linux
                     }, TimeSpan.FromMilliseconds(1800));
                 }
 
-                if (!demo)
+                if (interactive)
                 {
                     _controller.SnapshotReady += delegate(object sender, System.Collections.Generic.List<Periphora.Core.DeviceSnapshot> snapshot)
                     {

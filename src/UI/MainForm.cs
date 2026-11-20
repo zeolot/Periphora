@@ -215,8 +215,14 @@ namespace Periphora.UI
 
                 int pct;
                 bool hasLevel = s.Reading.Online && s.Reading.Percent.HasValue;
+                bool remembered = false;
                 if (hasLevel) pct = s.Reading.Percent.Value;
-                else { pct = 0; float lv; if (_lastPct.TryGetValue(id, out lv)) pct = (int)Math.Round(lv); }
+                else
+                {
+                    pct = 0;
+                    float lv;
+                    if (_lastPct.TryGetValue(id, out lv)) { pct = (int)Math.Round(lv); remembered = true; }
+                }
 
                 if (hasLevel) _lastPct[id] = pct;
                 if (row == null)
@@ -234,7 +240,7 @@ namespace Periphora.UI
                 v.Online = s.Reading.Online;
                 v.Sleeping = s.Reading.Sleeping;
                 v.Charging = s.Reading.Charging;
-                v.Percent = hasLevel ? (int?)pct : null;
+                v.Percent = hasLevel || remembered ? (int?)pct : null;
                 if (s.Reading.Charging) v.Subtitle = "充电中";
                 else if (!s.Reading.Online || s.Reading.Sleeping) v.Subtitle = "设备休眠中";
                 else if (!string.IsNullOrEmpty(s.Reading.Detail)) v.Subtitle = s.Reading.Detail;

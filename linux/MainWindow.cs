@@ -37,11 +37,13 @@ namespace Periphora.Linux
         private bool _pressRefresh, _pressSettings, _pressChevron;
         private bool _allowClose;
         private bool _demo;
+        private readonly string _demoScenario;
 
-        internal MainWindow(PeriphoraController controller, bool demo)
+        internal MainWindow(PeriphoraController controller, string demoScenario)
         {
             _controller = controller;
-            _demo = demo;
+            _demo = demoScenario != null;
+            _demoScenario = demoScenario ?? string.Empty;
             Width = ModernRenderer.DesignW;
             Height = ModernRenderer.HeightFor(1);
             MinWidth = ModernRenderer.DesignW;
@@ -53,7 +55,7 @@ namespace Periphora.Linux
             Background = Brushes.Transparent;
             TransparencyLevelHint = new[] { WindowTransparencyLevel.Transparent };
             Title = "Periphora";
-            RefreshSeconds = controller != null ? controller.RefreshSeconds : 30;
+            RefreshSeconds = controller != null ? controller.RefreshSeconds : 90;
 
             _frameTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
             _frameTimer.Tick += delegate { OnFrame(); };
@@ -127,12 +129,17 @@ namespace Periphora.Linux
                 row.Leaving = false;
 
                 bool hasLevel = item.Reading.Online && item.Reading.Percent.HasValue;
+                bool remembered = false;
                 int percent = 0;
                 if (hasLevel) percent = item.Reading.Percent.Value;
                 else
                 {
                     double last;
-                    if (_lastPercent.TryGetValue(id, out last)) percent = (int)Math.Round(last);
+                    if (_lastPercent.TryGetValue(id, out last))
+                    {
+                        percent = (int)Math.Round(last);
+                        remembered = true;
+                    }
                 }
                 if (hasLevel) _lastPercent[id] = percent;
 
@@ -143,7 +150,9 @@ namespace Periphora.Linux
                 view.Online = item.Reading.Online;
                 view.Sleeping = item.Reading.Sleeping;
                 view.Charging = item.Reading.Charging;
-                view.Percent = hasLevel ? (int?)percent : null;
+                // A sleeping device keeps showing the last figure it reported;
+                // only a device that has never answered stays at "--".
+                view.Percent = hasLevel || remembered ? (int?)percent : null;
 
                 if (item.Reading.Charging) view.Subtitle = "充电中";
                 else if (!item.Reading.Online || item.Reading.Sleeping) view.Subtitle = "设备休眠中";
@@ -366,13 +375,58 @@ namespace Periphora.Linux
         private void ShowDemo()
         {
             List<DeviceSnapshot> data = new List<DeviceSnapshot>();
+            string scenario = _demoScenario ?? string.Empty;
+
+            if (string.Equals(scenario, "empty", StringComparison.OrdinalIgnoreCase))
+            {
+                // Nothing attached yet: the panel shows the empty state.
+                Height = ModernRenderer.HeightFor(1);
+                bool flag = _demo;
+                _demo = false;
+                SetSnapshot(data);
+                _demo = flag;
+                return;
+            }
+
+            int count = 3;
+            if (scenario.Length > 0) int.TryParse(scenario, out count);
+            if (count < 1) count = 1;
+            if (count > 4) count = 4;
+
+            DeviceSnapshot asleep = null;
             data.Add(Demo("demo-kb", "MCHOSE", "K99 v2", "MCHOSE 2.4G 键盘",
-                DeviceKind.Keyboard, 95, false, "2.4G"));
-            data.Add(Demo("demo-ms", "VXE", "R1", "VXE R1 星闪版",
-                DeviceKind.Mouse, 60, true, "2.4G"));
-            Height = ModernRenderer.HeightFor(2);
+                DeviceKind.Keyboard, 89, false, "2.4G"));
+            if (count >= 2)
+            {
+                data.Add(Demo("demo-ms", "Logitech", "G304", "罗技 G304",
+                    DeviceKind.Mouse, 47, false, "2.4G"));
+            }
+            if (count >= 3)
+            {
+                // A device that reported earlier and is now asleep keeps its last
+                // reading, dimmed - this is what the third card demonstrates. The
+                // value is only remembered after one successful read, so feed the
+                // list online once before marking it asleep, exactly like a real
+                // session would.
+                asleep = Demo("demo-ms2", "Razer", "Viper V3 Pro", "雷蛇 毒蝰 V3 专业版",
+                    DeviceKind.Mouse, 62, false, "2.4G");
+                data.Add(asleep);
+            }
+            if (count >= 4)
+            {
+                data.Add(Demo("demo-kb2", "ROG", "AZOTH EXTREME", "ROG 夜魔 Extreme",
+                    DeviceKind.Keyboard, 100, true, "Omni 接收器"));
+            }
+
+            Height = ModernRenderer.HeightFor(data.Count);
             bool demoFlag = _demo;
             _demo = false;
+            if (asleep != null) SetSnapshot(data);
+            if (asleep != null)
+            {
+                asleep.Reading.Online = false;
+                asleep.Reading.Sleeping = true;
+            }
             SetSnapshot(data);
             _demo = demoFlag;
         }

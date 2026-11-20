@@ -448,8 +448,11 @@ namespace Periphora.UI
 
             // gauge: big number on top, thin progress bar underneath
             float disp = row.Display;
-            bool hasLevel = row.Percent.HasValue && row.Online;
-            string pctText = hasLevel
+            // A sleeping device keeps its last figure, drawn in grey with an empty
+            // bar; only a device that never answered stays at "--".
+            bool hasValue = row.Percent.HasValue;
+            bool hasLevel = hasValue && row.Online;
+            string pctText = hasValue
                 ? ((row.Percent.Value >= 100) ? "100%" : row.Percent.Value + "%")
                 : "--";
             Color col = LevelColor(row.Percent, row.Online, row.Sleeping);

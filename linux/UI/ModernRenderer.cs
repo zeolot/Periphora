@@ -353,16 +353,19 @@ namespace Periphora.Linux.UI
             string subtitle = Fit(row.Subtitle ?? "", HasCjk(row.Subtitle), 15, false, maxName);
             Text(context, subtitle, HasCjk(subtitle), 15, false, textX, top + 96, SubColor);
 
-            bool hasLevel = row.Percent.HasValue && row.Online;
-            string percentText = hasLevel ? (row.Percent.Value >= 100 ? "100%" : row.Percent.Value + "%") : "--";
-            Color color = hasLevel ? LevelColor(row.Percent, row.Online) : Grey;
+            // A sleeping device keeps its last figure in grey with an empty bar;
+            // only a device that never answered stays at "--".
+            bool hasValue = row.Percent.HasValue;
+            bool live = hasValue && row.Online;
+            string percentText = hasValue ? (row.Percent.Value >= 100 ? "100%" : row.Percent.Value + "%") : "--";
+            Color color = live ? LevelColor(row.Percent, row.Online) : Grey;
             Text(context, percentText, false, 34, true, gaugeRight, top + 68, color, TextAlign.Right);
 
             double barW = 170, barH = 9;
             double barX = gaugeRight - barW;
             double barY = top + 88;
             RoundRect(context, Brush(TrackColor), null, barX, barY, barW, barH, barH / 2);
-            if (hasLevel && row.Display > 0.5)
+            if (live && row.Display > 0.5)
             {
                 double fill = Math.Max(barH, barW * (Math.Min(100, row.Display) / 100));
                 RoundRect(context, Brush(color), null, barX, barY, fill, barH, barH / 2);

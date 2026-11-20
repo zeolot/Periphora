@@ -22,23 +22,27 @@ Periphora 是 [Voltide](https://github.com/sdparklab/Voltide) 的跨平台分支
 
 *四台设备——超过三台时，卡片行可用鼠标滚轮横向翻阅。*
 
+> 面板截图取自 Linux ARM64 构建（Avalonia + Skia 渲染，2 倍分辨率），与 Windows 版版式一致。托盘菜单那张是 Windows 版截图——Linux 下菜单由桌面环境绘制，外观随系统主题。
+
 ## 下载
 
-| 平台 | 文件 | 说明 |
-|---|---|---|
-| Windows 10 / 11 | `Periphora.exe` | 单文件，147 KB，依赖系统自带的 .NET Framework 4.8 |
-| Linux ARM64（deb） | `periphora_1.0.0_arm64.deb` | UOS 20 / Deepin / Debian 系，自带 udev 规则与桌面项 |
-| Linux ARM64（通用） | `Periphora-linux-arm64.tar.gz` | 自包含 .NET 8，解压即用，附 `install.sh` |
+| 平台 | 文件 | 体积 | 说明 |
+|---|---|---|---|
+| Windows 10 / 11 | `Periphora.exe` | 147 KB | 单文件，依赖系统自带的 .NET Framework 4.8 |
+| Linux ARM64（deb） | `periphora_1.0.0_arm64.deb` | 37 MB | UOS 20 / Deepin / Debian 系，自带 udev 规则与桌面项 |
+| Linux ARM64（通用） | `Periphora-linux-arm64.tar.gz` | 37 MB | 自包含 .NET 8，解压即用，附 `install.sh` |
+
+**为什么 exe 只有 147 KB，Linux 包却有 37 MB？** 两者不是一回事：exe 里只有程序本身，运行时由 Windows 自带的 .NET Framework 4.8 提供；Linux 包必须自带整套运行时与图形栈，因为 UOS / 麒麟的软件源里没有 .NET 8，做成「依赖系统 dotnet」的包等于装完无法启动。解压后 95.9 MB，gzip 后 37 MB，构成为托管运行时 60.2 MB、原生 `.so`（Skia / HarfBuzz / CLR）26.1 MB、Avalonia 8.4 MB。体积全部花在运行时上，程序自身不到 200 KB。
 
 已在 **UOS 20 + Kirin 9000C（aarch64）** 上完成构建与离屏渲染验证；外设实测请以你自己的设备为准，跑 `Periphora --test` 可以看到实际识别到了什么。
 
 ## 功能
 
 - **一块面板容纳全部设备。** 卡片自动排布并居中；设备接入即出现。超过三台时，卡片行可用鼠标滚轮横向翻阅。
-- **液面指示。** 闪电随电量注满，面板打开时有缓慢的波动。
-- **三档配色。** 50% 及以上为绿色，20% 至 49% 为黄色，20% 以下为红色。百分比与液面同步变色。
-- **准确的休眠状态。** 曾经上报过的设备在休眠时保留最后一次读数并变暗——一台睡着的鼠标仍然能提供信息。
-- **可调刷新间隔。** 面板打开时可选 15 秒、30 秒或 90 秒，设置会被保存并在下次启动时恢复。
+- **电量条。** 大号百分比下面是一条细进度条，随电量填充；面板每次打开会重放一次填充动画。
+- **三档配色。** 50% 及以上为绿色，20% 至 49% 为黄色，20% 以下为红色。百分比与进度条同步变色。
+- **准确的休眠状态。** 曾经上报过的设备在休眠时保留最后一次读数并变灰——一台睡着的鼠标仍然能提供信息。
+- **可调刷新间隔。** 15 / 30 / 90 秒三档，默认 90 秒，设置写入配置文件并在下次启动时恢复。Linux 下点面板右上角齿轮循环切换（也可在托盘菜单里直接选），Windows 下是面板底部的三个选项。
 - **托盘集成。** 左键打开面板，右键菜单列出每台设备及其当前电量。
 - **开机自启。** 可选，在托盘菜单中切换。
 - **跨平台同一套协议。** 罗技 HID++、迈丛 20 字节帧、ROG Omni 双通道等协议代码在两个平台上完全共用。
@@ -167,29 +171,34 @@ public interface IDeviceProvider
 
 ## 使用方法
 
-Windows 与 Linux 的操作一致：
+两个平台的操作基本一致：
 
 1. 启动后，面板会打开一次，之后常驻托盘。
 2. 左键点击托盘图标打开面板，右键查看设备列表。
-3. 选择刷新间隔（`15s / 30s / 90s`）与开机自启。
+3. 调整刷新间隔与开机自启：Windows 在面板底部与托盘菜单里，Linux 在面板右上角齿轮与托盘菜单里。
 
 无需安装、无后台服务、无需管理员权限。
 
 ![托盘菜单](docs/tray-menu.png)
 
-*托盘菜单列出每台设备及其当前电量，并提供刷新间隔与开机自启开关。*
+*Windows 版的托盘菜单：列出每台设备及其当前电量，并提供刷新间隔与开机自启开关。*
 
 ### 如何理解面板
 
 | 显示状态 | 含义 |
 |---|---|
-| 彩色百分比 + 已填充的闪电 | 设备在线并正常上报 |
-| 灰色百分比 + 空的闪电 | 设备休眠；所示数值为最后一次读数 |
-| `--` 与「设备休眠中」 | 设备处于空闲状态，且从未上报过 |
+| 彩色百分比 + 已填充的进度条 | 设备在线并正常上报 |
+| 灰色百分比 + 空的进度条，副标题「设备休眠中」 | 设备休眠；所示数值为最后一次读数 |
+| `--` 与「设备休眠中」，进度条为空 | 接收器在，但设备从未上报过 |
+
+第一张截图里第三行就是第二种情况：雷蛇鼠标已经休眠，卡片仍显示 62% 并整体变灰。
 
 ### 设置
 
-- **刷新间隔** —— 面板底部的三个选项（`15s / 30s / 90s`），默认 90 秒。面板隐藏到托盘后，刷新放慢至 5 分钟。
+- **刷新间隔** —— `15s / 30s / 90s` 三档，默认 90 秒，写入配置文件后长期生效。面板隐藏到托盘时刷新放慢至 5 分钟。
+  - **Linux**：点右上角齿轮在 15 → 30 → 90 之间循环，面板右下角显示当前值（`每 90 秒`），切换后顶部弹出提示；也可以从托盘右键菜单直接选。
+  - **Windows**：面板底部直接列出三个选项。
+- **收起面板** —— 右上角箭头把面板收回托盘；若桌面没有托盘宿主，点击直接退出进程。
 - **开机自启** —— 托盘菜单中的开关。Windows 写当前用户启动项；Linux 写 `~/.config/autostart/periphora.desktop`。均无需提权。
 
 ## 系统要求
@@ -208,6 +217,8 @@ libx11-6 libice6 libsm6 libfontconfig1 libfreetype6
 ```
 
 缺字体时中文会显示为方框，建议装一个 `fonts-noto-cjk` 或 `fonts-wqy-microhei`。
+
+安装后磁盘占用约 96 MB —— 其中程序本体不到 200 KB，其余是自带的 .NET 8 运行时与 Skia 图形栈。若你的机器已经有 .NET 8，可以自己从源码用 `--self-contained false` 发布一个几 MB 的 framework-dependent 版本。
 
 ## 构建
 
@@ -234,6 +245,19 @@ powershell -ExecutionPolicy Bypass -File pack.ps1 -Target dist
 产物在 `dist/`：`Periphora-linux-arm64/`（目录）、`Periphora-linux-arm64.tar.gz`、`periphora_1.0.0_arm64.deb`。打包脚本 `linux/packaging/package.py` 手工构造 ar 归档，不依赖 `dpkg-deb`，因此在 Windows 或 x86 机器上也能交叉产出可用的 deb。
 
 在 x86 机器上交叉编译时，`-r linux-arm64` 需要能拿到运行时包，这通常意味着已安装对应的 runtime pack 或有网络。`InvariantGlobalization=true` 已开启，避免依赖目标机的 ICU。
+
+### 重新生成截图
+
+`docs/` 下的面板图不是手工截的，而是由界面自己渲染，不需要真机和外设：
+
+```bash
+dotnet publish linux/Periphora.Linux.csproj -c Release -r win-x64 --self-contained false -o out/shot
+
+PERIPHORA_SHOT=/tmp/panel.png  PERIPHORA_SHOT_SCALE=2 out/shot/Periphora --demo=3
+PERIPHORA_SHOT=/tmp/panel4.png PERIPHORA_SHOT_SCALE=2 out/shot/Periphora --demo=4
+```
+
+`--demo` 接受 `2` / `3` / `4` / `empty`，用合成读数渲染对应场景（第三台故意设为休眠且此前上报过 62%）。`PERIPHORA_SHOT_SCALE=2` 输出 2 倍图，适配高 DPI 显示。托盘菜单那张只能手工截。
 
 ## 协议说明
 
