@@ -28,11 +28,11 @@ Periphora 是 [Voltide](https://github.com/sdparklab/Voltide) 的跨平台分支
 
 | 平台 | 文件 | 体积 | 说明 |
 |---|---|---|---|
-| Windows 10 / 11 | `Periphora.exe` | 149 KB | 单文件，依赖系统自带的 .NET Framework 4.8 |
+| Windows 10 / 11 | `Periphora.exe` | 153 KB | 单文件，依赖系统自带的 .NET Framework 4.8 |
 | Linux ARM64（deb） | `periphora_1.1.0_arm64.deb` | 37 MB | UOS 20 / Deepin / Debian 系，自带 udev 规则与桌面项 |
 | Linux ARM64（通用） | `Periphora-linux-arm64.tar.gz` | 37 MB | 自包含 .NET 8，解压即用，附 `install.sh` |
 
-**为什么 exe 只有 149 KB，Linux 包却有 37 MB？** 两者不是一回事：exe 里只有程序本身，运行时由 Windows 自带的 .NET Framework 4.8 提供；Linux 包必须自带整套运行时与图形栈，因为 UOS / 麒麟的软件源里没有 .NET 8，做成「依赖系统 dotnet」的包等于装完无法启动。解压后 95.9 MB，gzip 后 37 MB，构成为托管运行时 60.2 MB、原生 `.so`（Skia / HarfBuzz / CLR）26.1 MB、Avalonia 8.4 MB。体积全部花在运行时上，程序自身不到 200 KB。
+**为什么 exe 只有 153 KB，Linux 包却有 37 MB？** 两者不是一回事：exe 里只有程序本身，运行时由 Windows 自带的 .NET Framework 4.8 提供；Linux 包必须自带整套运行时与图形栈，因为 UOS / 麒麟的软件源里没有 .NET 8，做成「依赖系统 dotnet」的包等于装完无法启动。解压后 95.9 MB，gzip 后 37 MB，构成为托管运行时 60.2 MB、原生 `.so`（Skia / HarfBuzz / CLR）26.1 MB、Avalonia 8.4 MB。体积全部花在运行时上，程序自身不到 200 KB。
 
 已在 **UOS 20 + Kirin 9000C（aarch64）** 上完成构建与离屏渲染验证；外设实测请以你自己的设备为准，跑 `Periphora --test` 可以看到实际识别到了什么。
 
