@@ -85,6 +85,8 @@ ACTION=="add|change", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", TAG+="uacces
 Periphora --test
 ```
 
+输出包含架构、`/dev/hidraw*` 列表、以及每个适配器对各集合的匹配结果（含原始报文的十六进制）。把这个输出贴到 Issue 里，基本就能定位是设备没被枚举、还是协议没有应答。
+
 如果数值更新慢（要等五分钟、或者必须点一下面板才刷），可以单独验证唤醒监听。Windows 下：
 
 ```powershell
@@ -100,8 +102,6 @@ grep "activity watcher" ~/.config/Periphora/periphora-linux.log
 ```
 
 `watching N input node(s)` 中 N 为 0 表示没有找到可监听的输入集合（通常是 udev 规则没生效），同样只会退回定时轮询。
-
-输出包含架构、`/dev/hidraw*` 列表、以及每个适配器对各集合的匹配结果（含原始报文的十六进制）。把这个输出贴到 Issue 里，基本就能定位是设备没被枚举、还是协议没有应答。
 
 ### 配置文件位置
 
