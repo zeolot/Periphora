@@ -276,6 +276,8 @@ PERIPHORA_SHOT=/tmp/panel4.png PERIPHORA_SHOT_SCALE=2 out/shot/Periphora --demo=
 
 `--demo` 接受 `2` / `3` / `4` / `empty`，用合成读数渲染对应场景（第三台故意设为休眠且此前上报过 62%）。`PERIPHORA_SHOT_SCALE=2` 输出 2 倍图，适配高 DPI 显示。托盘菜单那张只能手工截。
 
+截图清单、图标生成方式与提交信息约定见 [docs/README.md](docs/README.md)。
+
 ## 协议说明
 
 这些协议均非厂商公开。各帧格式已写在对应适配器的文件头注释中。
