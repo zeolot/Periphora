@@ -29,7 +29,7 @@ Periphora 是 [Voltide](https://github.com/sdparklab/Voltide) 的跨平台分支
 | 平台 | 文件 | 体积 | 说明 |
 |---|---|---|---|
 | Windows 10 / 11 | `Periphora.exe` | 149 KB | 单文件，依赖系统自带的 .NET Framework 4.8 |
-| Linux ARM64（deb） | `periphora_1.0.0_arm64.deb` | 37 MB | UOS 20 / Deepin / Debian 系，自带 udev 规则与桌面项 |
+| Linux ARM64（deb） | `periphora_1.1.0_arm64.deb` | 37 MB | UOS 20 / Deepin / Debian 系，自带 udev 规则与桌面项 |
 | Linux ARM64（通用） | `Periphora-linux-arm64.tar.gz` | 37 MB | 自包含 .NET 8，解压即用，附 `install.sh` |
 
 **为什么 exe 只有 149 KB，Linux 包却有 37 MB？** 两者不是一回事：exe 里只有程序本身，运行时由 Windows 自带的 .NET Framework 4.8 提供；Linux 包必须自带整套运行时与图形栈，因为 UOS / 麒麟的软件源里没有 .NET 8，做成「依赖系统 dotnet」的包等于装完无法启动。解压后 95.9 MB，gzip 后 37 MB，构成为托管运行时 60.2 MB、原生 `.so`（Skia / HarfBuzz / CLR）26.1 MB、Avalonia 8.4 MB。体积全部花在运行时上，程序自身不到 200 KB。
@@ -42,6 +42,7 @@ Periphora 是 [Voltide](https://github.com/sdparklab/Voltide) 的跨平台分支
 - **电量条。** 大号百分比下面是一条细进度条，随电量填充；面板每次打开会重放一次填充动画。
 - **三档配色。** 50% 及以上为绿色，20% 至 49% 为黄色，20% 以下为红色。百分比与进度条同步变色。
 - **准确的休眠状态。** 曾经上报过的设备在休眠时保留最后一次读数并变灰——一台睡着的鼠标仍然能提供信息。
+- **动一下就更新。** 设备从休眠被唤醒时立刻重新读数，而不是等下一个轮询周期。Windows 靠 Raw Input 全局输入事件，Linux 靠对接收器输入节点的 `poll()`；只在空闲后的第一下动作触发，并带 8 秒冷却，避免把接收器问烦（问太勤它会停止应答）。
 - **可调刷新间隔。** 15 / 30 / 90 秒三档，默认 90 秒，设置写入配置文件并在下次启动时恢复。Linux 下点面板右上角齿轮循环切换（也可在托盘菜单里直接选），Windows 下是面板底部的三个选项。
 - **托盘集成。** 左键打开面板，右键菜单列出每台设备及其当前电量。
 - **开机自启。** 可选，在托盘菜单中切换。
@@ -52,7 +53,7 @@ Periphora 是 [Voltide](https://github.com/sdparklab/Voltide) 的跨平台分支
 ### 方式一：deb 包
 
 ```bash
-sudo dpkg -i periphora_1.0.0_arm64.deb
+sudo dpkg -i periphora_1.1.0_arm64.deb
 ```
 
 装到 `/opt/periphora`，同时安装 `/usr/share/applications/periphora.desktop` 与 `99-periphora-hidraw.rules`。启动后在应用菜单里找「外设电量」。
@@ -83,6 +84,22 @@ ACTION=="add|change", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", TAG+="uacces
 ```bash
 Periphora --test
 ```
+
+如果数值更新慢（要等五分钟、或者必须点一下面板才刷），可以单独验证唤醒监听。Windows 下：
+
+```powershell
+Periphora-Test.exe --rawtest
+```
+
+它会打印 `raw input sink : installed / FAILED`，然后在 6 秒内统计收到的输入报文数。`FAILED` 或计数为 0 说明监听没生效，程序会退回纯定时轮询——功能不丢，只是不能「动一下就更新」。
+
+Linux 下看日志里的一行：
+
+```bash
+grep "activity watcher" ~/.config/Periphora/periphora-linux.log
+```
+
+`watching N input node(s)` 中 N 为 0 表示没有找到可监听的输入集合（通常是 udev 规则没生效），同样只会退回定时轮询。
 
 输出包含架构、`/dev/hidraw*` 列表、以及每个适配器对各集合的匹配结果（含原始报文的十六进制）。把这个输出贴到 Issue 里，基本就能定位是设备没被枚举、还是协议没有应答。
 
@@ -242,7 +259,7 @@ powershell -ExecutionPolicy Bypass -File pack.ps1 -Target dist
 ./linux/build-linux-arm64.sh
 ```
 
-产物在 `dist/`：`Periphora-linux-arm64/`（目录）、`Periphora-linux-arm64.tar.gz`、`periphora_1.0.0_arm64.deb`。打包脚本 `linux/packaging/package.py` 手工构造 ar 归档，不依赖 `dpkg-deb`，因此在 Windows 或 x86 机器上也能交叉产出可用的 deb。
+产物在 `dist/`：`Periphora-linux-arm64/`（目录）、`Periphora-linux-arm64.tar.gz`、`periphora_1.1.0_arm64.deb`。打包脚本 `linux/packaging/package.py` 手工构造 ar 归档，不依赖 `dpkg-deb`，因此在 Windows 或 x86 机器上也能交叉产出可用的 deb。
 
 在 x86 机器上交叉编译时，`-r linux-arm64` 需要能拿到运行时包，这通常意味着已安装对应的 runtime pack 或有网络。`InvariantGlobalization=true` 已开启，避免依赖目标机的 ICU。
 
@@ -273,6 +290,7 @@ PERIPHORA_SHOT=/tmp/panel4.png PERIPHORA_SHOT_SCALE=2 out/shot/Periphora --demo=
 
 **平台差异**
 
+- **唤醒检测的实现不同。** Windows 用 `RegisterRawInputDevices` 挂一个 `RIDEV_INPUTSINK` 消息窗口，不打开设备、不与 G HUB 争句柄；Linux 对接收器的 Generic Desktop 集合（用途页 `0x01`）开非阻塞 `poll()`，设备一动节点就变可读。Linux 侧只监听输入集合，厂商集合上正在被 provider 读取的节点会被跳过——HID++ 的回复本身就是输入报文，多一个读者会把应答吞掉。两种监听初始化失败时都自动退回纯定时轮询。
 - **XInput 手柄仅 Windows。** Linux 版不注册 XInput 适配器；Xbox 手柄在 Linux 下走内核 `xpad` 驱动，不提供电量通道。
 - **报告长度归一化。** 无 report id 的 hidraw 设备读取时会少一个字节，Linux 后端在首位补 `0x00`，让 provider 内部的偏移约定与 Windows 保持一致。
 - **MCHOSE K7 的接口判定。** Windows 解析路径里的 `&mi_02&`，Linux 改用 `InterfaceNumber == 2`。

@@ -13,7 +13,8 @@ namespace Periphora.Linux
         {
             try
             {
-                File.AppendAllText(Path.Combine(Path.GetTempPath(), "periphora-linux.log"),
+                Periphora.Linux.Platform.LinuxSettings.EnsureDirectory();
+                File.AppendAllText(Periphora.Linux.Platform.LinuxSettings.LogPath,
                     DateTime.Now.ToString("HH:mm:ss") + " " + message + Environment.NewLine);
             }
             catch { }

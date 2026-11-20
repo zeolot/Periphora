@@ -16,7 +16,7 @@ OUT = ROOT / "dist"
 
 APP_NAME = "Periphora"
 PKG_NAME = "periphora"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 ARCH = "arm64"
 
 

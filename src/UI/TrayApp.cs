@@ -28,6 +28,17 @@ namespace Periphora.UI
         private bool _demoMode;   // when true, real HID reads must not overwrite the sample data
         private List<DeviceSnapshot> _demoSnap;   // sample data also fed to the right-click menu
 
+        // Wakes the poll up when the user touches a device, instead of waiting for
+        // the five-minute hidden interval.
+        private const int WakeRefreshCooldownMs = 8000;
+        private const int IdleResetMs = 4000;
+        private static readonly System.Diagnostics.Stopwatch _activitySince =
+            System.Diagnostics.Stopwatch.StartNew();
+        private Periphora.Interop.RawInputWatcher _rawWatcher;
+        private volatile bool _anySleeping;
+        private long _lastWakeRefresh = -WakeRefreshCooldownMs;
+        private long _lastInputMs = -IdleResetMs;
+
         // A second right-click replaces the popup instead of stacking another copy.
         private TrayMenuForm _menuForm;
 
@@ -86,6 +97,35 @@ namespace Periphora.UI
             };
             _timer.Start();
 
+            // A mouse that just woke up should not keep showing yesterday's figure.
+            // Raw Input tells us the moment the user touches anything, and then one
+            // refresh is enough - but only if something was asleep, otherwise the
+            // regular timer already keeps the numbers fresh.
+            _rawWatcher = Periphora.Interop.RawInputWatcher.TryStart(OnInputActivity);
+
+            RefreshNow();
+        }
+
+        /// <summary>
+        /// Called on every raw mouse/keyboard packet, i.e. potentially hundreds of
+        /// times a second, so it must bail out as cheaply as possible.
+        /// </summary>
+        private void OnInputActivity()
+        {
+            if (_demoMode || _rawWatcher == null) return;
+
+            long now = _activitySince.ElapsedMilliseconds;
+            long gap = now - _lastInputMs;
+            _lastInputMs = now;
+
+            // Dragging a mouse across the desk is one long burst of packets. Only the
+            // first packet after a quiet spell means "the device just woke up"; the
+            // rest would turn this into a poll storm, which is precisely what makes
+            // receivers stop answering.
+            if (gap < IdleResetMs) return;
+            if (!_anySleeping) return;
+            if (now - _lastWakeRefresh < WakeRefreshCooldownMs) return;
+            _lastWakeRefresh = now;
             RefreshNow();
         }
 
@@ -341,6 +381,13 @@ namespace Periphora.UI
             foreach (DeviceSnapshot s in copy)
                 if (s != null && s.Info != null && s.Reading != null) visible.Add(s);
 
+            // Remembered here so the raw-input handler can decide without walking
+            // the device list on every packet.
+            bool sleeping = false;
+            foreach (DeviceSnapshot s in visible)
+                if (s.Reading.Sleeping) { sleeping = true; break; }
+            _anySleeping = sleeping;
+
             if (visible.Count == 1)
             {
                 DeviceReading r = visible[0].Reading;
@@ -542,6 +589,14 @@ namespace Periphora.UI
 
         public void Dispose()
         {
+            // Stop the input sink before the message loop goes away, otherwise the
+            // system keeps posting WM_INPUT to a destroyed window.
+            if (_rawWatcher != null)
+            {
+                try { _rawWatcher.Dispose(); } catch { }
+                _rawWatcher = null;
+            }
+
             // The popup is a separate top-level window: closing the tray app must not
             // leave it on screen.
             if (_menuForm != null && !_menuForm.IsDisposed)

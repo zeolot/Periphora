@@ -24,6 +24,18 @@ namespace Periphora.Linux.Platform
 
         private static string FilePath { get { return Path.Combine(DirectoryPath, "settings.json"); } }
 
+        /// <summary>
+        /// Where the app writes its own log. Kept next to settings.json so a bug
+        /// report can include it — /tmp gets wiped on reboot, which loses exactly
+        /// the startup that went wrong.
+        /// </summary>
+        internal static string LogPath { get { return Path.Combine(DirectoryPath, "periphora-linux.log"); } }
+
+        internal static void EnsureDirectory()
+        {
+            try { Directory.CreateDirectory(DirectoryPath); } catch { }
+        }
+
         internal static SettingsData Load()
         {
             try

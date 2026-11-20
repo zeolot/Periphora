@@ -33,6 +33,11 @@ namespace Periphora
                     RunTest();
                     return;
                 }
+                if (args != null && args.Length > 0 && args[0] == "--rawtest")
+                {
+                    RunRawInputTest();
+                    return;
+                }
 
                 bool autoShow = false;
                 bool demo = false;
@@ -100,9 +105,35 @@ namespace Periphora
             }
         }
 
-        private static void RunTest()
+        /// <summary>
+        /// Checks that the raw-input sink the tray app relies on can be installed,
+        /// and counts how many packets arrive while the user touches the mouse or
+        /// keyboard. Run it when "a woken device updates only after a click" needs
+        /// to be narrowed down: registration failing means the refresh falls back to
+        /// the timer alone.
+        /// </summary>
+        private static void RunRawInputTest()
         {
-            DeviceManager m = new DeviceManager();
+            int count = 0;
+            Periphora.Interop.RawInputWatcher watcher =
+                Periphora.Interop.RawInputWatcher.TryStart(delegate { count++; });
+
+            Console.WriteLine("raw input sink : " + (watcher == null ? "FAILED (timer fallback)" : "installed"));
+            if (watcher == null) return;
+
+            Console.WriteLine("move the mouse or press a key for the next 6 seconds...");
+            DateTime until = DateTime.Now.AddSeconds(6);
+            while (DateTime.Now < until)
+            {
+                Application.DoEvents();
+                System.Threading.Thread.Sleep(20);
+            }
+            watcher.Dispose();
+            Console.WriteLine("packets received: " + count);
+        }
+
+        private static void RunTest()
+        {            DeviceManager m = new DeviceManager();
             m.Refresh();
 
             List<DeviceSnapshot> snaps = m.Snapshot();
