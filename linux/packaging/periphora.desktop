@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Periphora
+Name[zh_CN]=外设电量
+Comment=Wireless peripheral battery monitor
+Comment[zh_CN]=显示无线键鼠和耳机的电量
+Exec=periphora
+Icon=periphora
+Terminal=false
+Categories=Utility;HardwareSettings;
+StartupNotify=false
+StartupWMClass=Periphora

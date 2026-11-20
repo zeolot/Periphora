@@ -1,0 +1,16 @@
+# Periphora supported wireless receivers.
+# TAG+="uaccess" grants the locally logged-in desktop user access without root.
+ACTION=="add|change", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", TAG+="uaccess", MODE="0660"
+ACTION=="add|change", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="3554", TAG+="uaccess", MODE="0660"
+ACTION=="add|change", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="258a", TAG+="uaccess", MODE="0660"
+ACTION=="add|change", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="3837", TAG+="uaccess", MODE="0660"
+ACTION=="add|change", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="5253", TAG+="uaccess", MODE="0660"
+ACTION=="add|change", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0b05", TAG+="uaccess", MODE="0660"
+ACTION=="add|change", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1532", TAG+="uaccess", MODE="0660"
+ACTION=="add|change", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="373b", TAG+="uaccess", MODE="0660"
+ACTION=="add|change", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="a8a5", TAG+="uaccess", MODE="0660"
+ACTION=="add|change", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="24ae", TAG+="uaccess", MODE="0660"
+ACTION=="add|change", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="372e", TAG+="uaccess", MODE="0660"
+ACTION=="add|change", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="36f9", TAG+="uaccess", MODE="0660"
+ACTION=="add|change", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="054c", TAG+="uaccess", MODE="0660"
+ACTION=="add|change", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2dc8", TAG+="uaccess", MODE="0660"

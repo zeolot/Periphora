@@ -1,0 +1,15 @@
+# Shell scripts and Python helpers must keep LF even on a Windows checkout,
+# otherwise the arm64 packages would ship CRLF shebangs and refuse to run.
+*.sh            text eol=lf
+*.py            text eol=lf
+*.rules         text eol=lf
+*.desktop       text eol=lf
+
+# C# and PowerShell are edited on Windows; let Git pick the platform default.
+*.cs            text
+*.ps1           text
+*.csproj        text
+*.md            text
+
+*.png           binary
+*.ico           binary

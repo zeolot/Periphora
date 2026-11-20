@@ -1,0 +1,26 @@
+# Build output
+*.exe
+*.pdb
+obj/
+bin/
+dist/
+
+# Local .NET SDK installed by the Linux build script
+.tools/
+
+# Fonts are embedded into the executable at build time and are not redistributed
+# with the source. Keep the folder out of the repository.
+Fonts/
+
+# Runtime artefacts
+periphora-error.txt
+*.pcap
+*.log
+
+# Editor / OS
+.vs/
+.idea/
+*.user
+Thumbs.db
+desktop.ini
+.DS_Store

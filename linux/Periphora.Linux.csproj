@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <AssemblyName>Periphora</AssemblyName>
+    <RootNamespace>Periphora.Linux</RootNamespace>
+    <ApplicationIcon>..\periphora.ico</ApplicationIcon>
+    <DefineConstants>$(DefineConstants);LINUX</DefineConstants>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <PublishSingleFile>false</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>linux-arm64</RuntimeIdentifier>
+    <SatelliteResourceLanguages>zh-Hans;en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\src\Core\**\*.cs" Link="Core\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\src\Interop\HidNative.cs" Link="Interop\HidNative.cs" />
+    <Compile Include="..\src\Interop\LinuxHid.cs" Link="Interop\LinuxHid.cs" />
+    <Compile Include="..\src\Providers\**\*.cs" Exclude="..\src\Providers\XInputProvider.cs"
+             Link="Providers\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.23" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.23" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.23" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.23" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\periphora.png" />
+  </ItemGroup>
+</Project>
